@@ -1,5 +1,7 @@
 # DevOps-SoftUni-Feb2022
 
+![https://softuni.bg/trainings/3670/devops-containerization-ci-cd-monitoring-february-2022](https://github.com/VeselinovStf/DevOps-SoftUni-Feb2022/blob/main/repo_img/logo.png)
+
 ## SoftUni - DevOps - Containerization, CI/CD &amp; Monitoring - Februsry2022 
 
 ## Themes
