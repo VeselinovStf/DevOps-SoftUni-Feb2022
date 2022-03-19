@@ -1,0 +1,24 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+    
+  config.env.enable
+  config.ssh.insert_key = false
+
+  config.vm.define ENV['NODE_VM_HOST_NAME'] do |node|
+    node.vm.box=ENV['NODE_VAGRANT_BOX_NAME']
+    node.vm.hostname = ENV['NODE_VM_HOST_NAME']  
+    node.vm.provider :virtualbox do |vb|
+      vb.memory = ENV['NODE_VB_MEMORY']
+      vb.cpus = ENV['NODE_VB_CPUS']
+	    vb.customize ["modifyvm", :id, "--usb", "off"]
+      vb.customize ["modifyvm", :id, "--usbehci", "off"]
+    end
+    node.vm.network "private_network", ip: ENV['NODE_VM_IP']
+	  node.vm.provision "shell", path: ENV['NODE_VM_ADD_HOSTS_SCRIPT']
+    node.vm.provision "shell", path: ENV['NODE_VM_DOCKER_SCRIPT']
+    node.vm.provision "shell", path: ENV['NODE_VM_DOCKER_COMPOSE_SCRIPT']
+    node.vm.provision "shell", path: ENV['NODE_VM_ENVIRONMENT_SCRIPT']
+  end
+end

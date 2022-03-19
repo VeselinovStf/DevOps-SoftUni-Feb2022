@@ -1,0 +1,47 @@
+version: "3"
+services:
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    networks:
+      - goprom
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - 3000:3000
+    networks:
+      - goprom
+    depends_on:
+      - prometheus
+  goprom_node1:
+    container_name: goprom_node1
+    build:
+      context: ./goprom/
+      dockerfile: Dockerfile
+    networks:
+      - goprom
+    ports:
+      - 8090:8080
+    depends_on:
+      - prometheus
+      - grafana
+  goprom_node2:
+    container_name: goprom_node2
+    build:
+      context: ./goprom/
+      dockerfile: Dockerfile
+    networks:
+      - goprom
+    ports:
+      - 8099:8080
+    depends_on:
+      - prometheus
+      - grafana
+networks:
+  goprom:
+  

@@ -1,0 +1,44 @@
+Vagrant.configure("2") do |config|
+    # enable use of .env file
+    config.env.enable
+
+    config.vm.define ENV['MASTER_DO_NAME'] do |docker1|
+        docker1.vm.box=ENV['VAGRANT_BOX_NAME']
+        docker1.vm.hostname = ENV['MASTER_HOSTNAME']
+        docker1.vm.network "private_network", ip: ENV['MASTER_IP']
+        docker1.vm.provision "shell", path: ENV['DOCKER_SETUP_PROVISIONER_SCRIPT']
+        docker1.vm.provision "shell", path: ENV['OTHER_SETUP_PROVISIONER_SCRIPT']
+        docker1.vm.synced_folder ENV['SYNCED_FOLDER_FROM'], ENV['SYNCED_FOLDER_TO'], type: ENV['SYNCED_FOLDER_TYPE']
+        docker1.vm.provision "shell", path: ENV['MASTER_PROVISIONER_SCRIPT'], :args => ENV['MASTER_IP'] 
+        docker1.vm.provider :virtualbox do |vb|
+            vb.memory = ENV['VB_MEMORY']
+            vb.cpus = ENV['VB_CPUS']
+        end
+    end
+
+    # Iterate Worker Creation
+    (2..3).each do |worker_index|
+        config.vm.define "#{ENV['WORKER_DEFINISION_NAME_PREFIX']}#{worker_index}" do |node|
+            node.vm.box=ENV['VAGRANT_BOX_NAME']
+            node.vm.hostname = "#{ENV['WORKER_DEFINISION_NAME_PREFIX']}#{worker_index}#{ENV['WORKER_DEFINISION_NAME_POSTFIX']}"
+            node.vm.network "private_network", ip: "#{ENV['WORKER_IP']}#{worker_index}"
+            node.vm.provision "shell", path:  ENV['DOCKER_SETUP_PROVISIONER_SCRIPT']
+            node.vm.provision "shell", path: ENV['OTHER_SETUP_PROVISIONER_SCRIPT']
+            node.vm.synced_folder ENV['SYNCED_FOLDER_FROM'], ENV['SYNCED_FOLDER_TO'], type: ENV['SYNCED_FOLDER_TYPE']
+            node.vm.provision "shell", path: ENV['WORKER_PROVISIONER_SCRIPT'], :args => "#{ENV['WORKER_IP']}#{worker_index}"      
+            node.vm.provider :virtualbox do |vb|
+                vb.memory = ENV['VB_MEMORY']
+                vb.cpus = ENV['VB_CPUS']
+            end
+        end
+
+        # Deploy Docker Swarm Stack after last worker
+        config.trigger.after :up do |trigger|
+            if(worker_index == 3)then # prevents second execution of trigger!
+                trigger.only_on = "#{ENV['TRIGER_ONLY_ON_DO_NAME']}" # Execute trigger only afer last worker creation
+                trigger.info = "* Stack Deploy"
+                trigger.run = {inline: "vagrant ssh -c 'docker stack deploy -c <(docker-compose -f /vagrant/docker-compose.yaml --env-file /vagrant/.env config) bgapp' docker1"}             
+            end            
+        end
+    end
+end

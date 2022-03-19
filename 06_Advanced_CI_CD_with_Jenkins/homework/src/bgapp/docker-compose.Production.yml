@@ -1,0 +1,22 @@
+version: "3.8"
+services:
+    web:
+        image: veselinovstf/bgapp-jenkins-web
+        container_name: bgapp_web
+        ports:
+            - 80:80
+        volumes:
+            - ./web/:/var/www/html/
+        networks:
+            - bgapp-app-prod-network
+        depends_on:
+            - db
+    db:
+        image: veselinovstf/bgapp-jenkins-db
+        networks:
+            - bgapp-app-prod-network
+        container_name: bgapp_db
+        environment:
+            MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
+networks:
+    bgapp-app-prod-network:
