@@ -1,0 +1,27 @@
+version: "3.8"
+services:
+    dob-consumer:
+      image: veselinovstf/con-client
+      container_name: Co1
+      ports:
+          - 80:5000
+      networks:
+          - app-net
+      depends_on:
+          - con-storage
+    dob-producer:
+       image: veselinovstf/con-generator      
+       container_name: Co2    
+       networks:
+           - app-net
+       depends_on:
+           - con-storage
+    con-storage:
+      image: veselinovstf/con-storage
+      container_name: Co3
+      networks:
+          - app-net
+      environment:
+          MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
+networks:
+    app-net:

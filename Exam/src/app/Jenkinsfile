@@ -1,0 +1,102 @@
+pipeline 
+{
+    agent 
+    {
+        label 'docker-node'
+    }
+
+    environment 
+    {
+        DOCKERHUB_CREDENTIALS=credentials('docker-hub-credentials')
+    }
+
+    stages 
+    {
+
+         stage("Prepare - Clean Up Any Leftover Docker Containers") {
+
+            steps {
+                sh '''
+                    docker container rm -f Co1 || true
+                    docker container rm -f Co2 || true
+                    docker container rm -f Co3 || true
+                '''
+            }
+        }
+
+        stage("Deploy - Run Docker Compose") {
+
+            steps {
+                sh '''
+                    docker-compose -f docker-compose.Development.yml up -d --build
+                '''
+            }
+        }
+
+        stage("Testing Development") {
+
+            steps {
+                echo 'Sleep while app is UP'
+                sh 'sleep 1m'
+
+                echo 'Test #1 - reachability'
+                sh 'echo $(curl --write-out "%{http_code}" --silent --output /dev/null http://localhost:8080) | grep 200'
+
+                echo 'Test #2 - Fun Facts About Animals'
+                sh "curl --silent http://localhost:8080 | grep 'Fun Facts About Animals'"
+            }
+        }
+
+        stage("Stoping Application - Development") {
+
+            steps {
+                sh '''
+                   docker-compose -f docker-compose.Development.yml down
+                '''
+            }
+        }    
+
+        stage('Login to Docker Hub') 
+        {
+            steps 
+            {
+                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+            }
+        }
+
+        stage("Publishing - Client - to Docker Hub") {
+
+            steps {
+                sh 'docker image tag con-client veselinovstf/con-client'
+                sh 'docker push veselinovstf/con-client'
+            }
+        }   
+
+        stage("Publishing - Generator - to Docker Hub") {
+
+            steps {
+                sh 'docker image tag con-generator veselinovstf/con-generator'
+                sh 'docker push veselinovstf/con-generator'
+            }
+        }   
+
+        stage("Publishing - Storage - to Docker Hub") {
+
+            steps {
+                sh 'docker image tag con-storage veselinovstf/con-storage'
+                sh 'docker push veselinovstf/con-storage'
+            }
+        }   
+
+        stage("Deploy - Run Docker Production") {
+
+            steps {
+                sh '''
+                    docker-compose -f docker-compose.Production.yml up -d --build
+                '''
+            }
+        }
+  
+
+    }
+}

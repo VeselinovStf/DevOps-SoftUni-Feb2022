@@ -1,0 +1,36 @@
+version: "3.8"
+services:
+    con-client:
+      image: con-client
+      build:
+        context: ./client
+        dockerfile: Dockerfile
+      container_name: Co1
+      ports:
+          - 8080:5000
+      networks:
+          - app-net
+      depends_on:
+          - con-storage
+    con-generator:
+       image: con-generator
+       build:
+         context: ./generator
+         dockerfile: Dockerfile
+       container_name: Co2
+       networks:
+           - app-net
+       depends_on:
+           - con-storage
+    con-storage:
+      image: con-storage
+      build:
+        context: ./storage
+        dockerfile: Dockerfile
+      container_name: Co3
+      networks:
+          - app-net
+      environment:
+          MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
+networks:
+    app-net:

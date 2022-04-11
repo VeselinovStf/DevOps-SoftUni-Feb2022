@@ -1,0 +1,72 @@
+# -*- mode: ruby -*-
+# vi: set ft-ruby :
+
+Vagrant.configure("2") do |config|
+    config.ssh.insert_key = false
+
+  # Pipeline VM - .IP1
+  config.vm.define "pipelines" do |pipelines|
+    pipelines.vm.box="veselinovstf/debian-minimal"
+    pipelines.vm.hostname = "pipelines.do1.exam"
+    pipelines.vm.network "private_network", ip: "192.168.111.201"
+    pipelines.vm.network "forwarded_port", guest: 8080, host: 8080, auto_correct: true # Jenkins 
+    pipelines.vm.provision "shell", path: "./scripts/debian/install-prerequisites-debian.sh"
+    pipelines.vm.provision "shell", path: "./scripts/debian/jenkins/install-jenkins-debian.sh"
+    pipelines.vm.provision "shell", path: "./scripts/jenkins/setup-jenkins-user-linux.sh"
+    pipelines.vm.provision "shell", path: "./scripts/debian/jenkins/setup-jenkins-from-sh-debian.sh"
+    pipelines.vm.provision "shell", path: "./scripts/debian/jenkins/add-jenkins-credentials-debian.sh"
+    pipelines.vm.provision "shell", path: "./scripts/debian/jenkins/add-jenkins-extras-debia.sh"
+    pipelines.vm.provision "shell", path: "./scripts/debian/prometheus/install-prom-node-exporter-debian.sh"
+    pipelines.vm.provider :virtualbox do |vb|
+        vb.memory = 1024
+        vb.cpus = 1
+        vb.gui = false
+    end
+  end
+
+  # Container VM - .IP2
+  config.vm.define "containers" do |containers|
+    containers.vm.box="veselinovstf/debian-minimal"
+    containers.vm.hostname = "containers.do1.exam"
+    containers.vm.network "private_network", ip: "192.168.111.202"
+    containers.vm.network "forwarded_port", guest: 3000, host: 3000, auto_correct: true # Gitea
+    containers.vm.network "forwarded_port", guest: 80, host: 3050, auto_correct: true # APP - Consumer
+    containers.vm.provision "shell", path: "./scripts/debian/install-prerequisites-debian.sh"
+    containers.vm.provision "shell", path: "./scripts/debian/docker/install-docker-debian.sh"
+    containers.vm.provision "shell", path: "./scripts/references/docker/expose-docker-metrics.sh"
+    containers.vm.provision "shell", path: "./scripts/debian/docker-compose/install-docker-compose-debian.sh"
+    containers.vm.provision "shell", path: "./src/gitea/compose-start-gitea-container.sh"
+    containers.vm.provision "shell", path: "./scripts/debian/jenkins/setup-jenkins-agent-debian.sh"
+    containers.vm.provision "shell", path: "./scripts/debian/prometheus/install-prom-node-exporter-debian.sh"
+    containers.vm.provider :virtualbox do |vb|
+        vb.memory = 1024
+        vb.cpus = 1
+        vb.gui = false
+    end
+  end
+
+  # Monitoring VM - .IP3
+  config.vm.define "monitoring" do |monitoring|
+    monitoring.vm.box="veselinovstf/debian-minimal"
+    monitoring.vm.hostname = "monitoring.do1.exam"
+    monitoring.vm.network "private_network", ip: "192.168.111.203"
+    monitoring.vm.network "forwarded_port", guest: 9090, host: 9090, auto_correct: true 
+    monitoring.vm.network "forwarded_port", guest: 3000, host: 9095, auto_correct: true # Grafana
+    monitoring.vm.provision "shell", path: "./scripts/debian/install-prerequisites-debian.sh"
+    monitoring.vm.provision "shell", path: "./scripts/debian/prometheus/install-prometheus-debian.sh"
+    monitoring.vm.provision "shell", path: "./scripts/debian/grafana/install-grafana-debian.sh"
+    monitoring.vm.provision "shell", path: "./src/grafana/grafana-api-setup.sh"
+    monitoring.vm.provider :virtualbox do |vb|
+        vb.memory = 1024
+        vb.cpus = 1
+        vb.gui = false
+    end
+  end
+
+  config.trigger.after :up do |trigger|
+        trigger.only_on = "containers"
+        trigger.info = "* Create Jenkins Agent"
+        trigger.run = {inline: "vagrant ssh -c '/vagrant/scripts/references/jenkins/join-jenkins-agent-to-master.sh' pipelines"}
+  end 
+
+end
